@@ -4,6 +4,7 @@ import mysql.connector
 from sentence_transformers import SentenceTransformer
 import numpy as np
 import json
+import csv
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -92,6 +93,47 @@ def find_similar_projects():
     connection.close()
 
     return jsonify(result), 200
+
+@app.route('/api/load_data', methods=['POST'])
+def load_data():
+    """Load data from a CSV file into the Project database."""
+    csv_file_path = 'data/dataset.csv'  # Specify the path to your CSV file
+
+    connection = mysql.connector.connect(**db_config)
+    cursor = connection.cursor()
+
+    # Truncate the Project table to delete all existing records
+    cursor.execute("TRUNCATE TABLE Project")
+
+    # Open and read the CSV file
+    with open(csv_file_path, newline='', encoding='utf-8') as csvfile:
+        reader = csv.DictReader(csvfile)
+        batch_size = 1000
+        batch = []
+
+        for row in reader:
+            batch.append((row['id'], row['title'], row['abstract']))
+
+            # Insert the batch when it reaches batch_size
+            if len(batch) >= batch_size:
+                cursor.executemany(
+                    "INSERT INTO Project (id, title, abstract) VALUES (%s, %s, %s)",
+                    batch
+                )
+                batch.clear()  # Clear the batch after inserting
+
+        # Insert any remaining rows after the loop
+        if batch:
+            cursor.executemany(
+                "INSERT INTO Project (id, title, abstract) VALUES (%s, %s, %s)",
+                batch
+            )
+
+    connection.commit()
+    cursor.close()
+    connection.close()
+
+    return jsonify({"message": "Data loaded successfully"}), 200
 
 if __name__ == '__main__':
     app.run(port=5001)
