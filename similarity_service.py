@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import mysql.connector
 from sentence_transformers import SentenceTransformer
 import numpy as np
@@ -6,6 +7,7 @@ import json
 
 # Initialize Flask app
 app = Flask(__name__)
+CORS(app)  # Apply CORS to the Flask app
 
 # Initialize the SentenceTransformer model
 model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -57,6 +59,7 @@ def generate_embeddings():
 def find_similar_projects():
     """Find top 3 similar projects based on user input text."""
     user_text = request.json.get('text')
+    
     if not user_text:
         return jsonify({"error": "Text input is required"}), 400
 
@@ -84,7 +87,7 @@ def find_similar_projects():
         {"id": proj[0], "title": proj[1], "abstract": proj[2], "similarity": proj[3]}
         for proj in top_projects
     ]
-
+    
     cursor.close()
     connection.close()
 
